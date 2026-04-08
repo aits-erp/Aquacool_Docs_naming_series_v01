@@ -8,6 +8,32 @@ app_license = "mit"
 # Apps
 # ------------------
 
+# doc_events = {
+#     "*": {
+#         "before_insert": "naming_series_app.utils.naming.validate_series"
+#     }
+# }
+
+fixtures = [
+    {
+        "dt": "Custom Field",
+        "filters": [
+            ["module", "=", "naming_series_app"]
+        ]
+    }
+]
+
+
+doctype_js = {
+    "Sales Invoice": "public/js/naming.js",
+    "Sales Order": "public/js/naming.js",
+    "Quotation": "public/js/naming.js",
+    "Purchase Invoice": "public/js/naming.js",
+    "Purchase Order": "public/js/naming.js"
+}
+
+
+
 # required_apps = []
 
 # Each item in the list will be shown as an app in the apps page

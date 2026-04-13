@@ -103,31 +103,29 @@ const DOCTYPES = [
 
 DOCTYPES.forEach((dt) => {
 	frappe.ui.form.on(dt, {
-		refresh: function (frm) {
-			apply_series_with_delay(frm);
+		onload: function (frm) {
+			apply_series(frm);
 		},
+
+		refresh: function (frm) {
+			apply_series(frm);
+		},
+
 		company: function (frm) {
 			console.log(`${dt} Company Changed:`, frm.doc.company);
 
-			// ✅ Allow only if draft or new
 			if (frm.doc.docstatus === 0) {
 				frm.set_value("naming_series", "");
-				apply_series_with_delay(frm);
+				apply_series(frm);
 			}
 		},
 	});
 });
 
-function apply_series_with_delay(frm) {
-	setTimeout(() => apply_series(frm), 300);
-	setTimeout(() => apply_series(frm), 800);
-	setTimeout(() => apply_series(frm), 1500);
-}
-
 function apply_series(frm) {
 	if (!frm.doc.company || !frm.fields_dict.naming_series) return;
 
-	// ❌ Don't touch submitted docs
+	// ❌ Skip submitted
 	if (frm.doc.docstatus === 1) return;
 
 	frappe.call({
@@ -140,25 +138,38 @@ function apply_series(frm) {
 			let series = r.message || [];
 			console.log(`${frm.doc.doctype} Fetched Series:`, series);
 
-			if (series.length > 0) {
-				frm.fields_dict.naming_series.df.options = series.join("\n");
-				frm.refresh_field("naming_series");
-
-				// ✅ Only set if empty OR invalid
-				if (!frm.doc.naming_series || !series.includes(frm.doc.naming_series)) {
-					frm.set_value("naming_series", series[0]);
-				}
-			} else {
+			// ✅ Fallback
+			if (!series.length) {
 				const default_series =
 					DEFAULT_SERIES[frm.doc.doctype] ||
 					frm.doc.doctype.substr(0, 4).toUpperCase() + "-";
 
-				frm.fields_dict.naming_series.df.options = default_series;
-				frm.refresh_field("naming_series");
+				series = [default_series];
+			}
 
-				if (!frm.doc.naming_series) {
-					frm.set_value("naming_series", default_series);
-				}
+			// ✅ Set dropdown options
+			frm.fields_dict.naming_series.df.options = series.join("\n");
+			frm.refresh_field("naming_series");
+
+			let current_series = frm.doc.naming_series;
+
+			// ✅ CASE 1: Draft already has value → KEEP IT
+			if (current_series && series.includes(current_series)) {
+				return;
+			}
+
+			// ✅ CASE 2: Draft has value but not in list → ADD IT
+			if (current_series && !series.includes(current_series)) {
+				series.unshift(current_series);
+
+				frm.fields_dict.naming_series.df.options = series.join("\n");
+				frm.refresh_field("naming_series");
+				return;
+			}
+
+			// ✅ CASE 3: New doc → set first series
+			if (!current_series) {
+				frm.set_value("naming_series", series[0]);
 			}
 		},
 	});

@@ -14,24 +14,19 @@ app_license = "mit"
 #     }
 # }
 
-fixtures = [
-    {
-        "dt": "Custom Field",
-        "filters": [
-            ["module", "=", "naming_series_app"]
-        ]
-    }
-]
+fixtures = [{"dt": "Custom Field", "filters": [["module", "=", "naming_series_app"]]}]
 
 
 doctype_js = {
-    "Sales Invoice": "public/js/naming.js",
-    "Sales Order": "public/js/naming.js",
-    "Quotation": "public/js/naming.js",
-    "Purchase Invoice": "public/js/naming.js",
-    "Purchase Order": "public/js/naming.js"
+	"Sales Invoice": "public/js/naming.js",
+	"Sales Order": "public/js/naming.js",
+	"Quotation": "public/js/naming.js",
+	"Purchase Invoice": "public/js/naming.js",
+	"Purchase Order": "public/js/naming.js",
+	"Payment Entry": "public/js/naming.js",
+	"Journal Entry": "public/js/naming.js",
+	"Credit Note": "public/js/naming.js",
 }
-
 
 
 # required_apps = []
@@ -272,4 +267,3 @@ doctype_js = {
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
-

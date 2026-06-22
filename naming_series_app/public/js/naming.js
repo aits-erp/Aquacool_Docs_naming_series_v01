@@ -246,10 +246,20 @@ DOCTYPES.forEach((dt) => {
 });
 
 function apply_series(frm) {
-	if (!frm.doc.company || !frm.fields_dict.naming_series) return;
+	if (!frm.fields_dict.naming_series) return;
 
 	// ❌ Skip submitted
 	if (frm.doc.docstatus === 1) return;
+
+	// ✅ NO COMPANY YET → wipe out Frappe's own baked-in default, show nothing
+	if (!frm.doc.company) {
+		if (frm.is_new() && frm.doc.naming_series) {
+			frm.set_value("naming_series", "");
+			frm.fields_dict.naming_series.df.options = "";
+			frm.refresh_field("naming_series");
+		}
+		return;
+	}
 
 	frappe.call({
 		method: "naming_series_app.utils.naming.get_series",
@@ -277,7 +287,7 @@ function apply_series(frm) {
 			let current_series = frm.doc.naming_series;
 			let is_new_doc = frm.is_new();
 
-			// ✅ NEW DOCUMENT → Always force company-mapped series, ignore Frappe's auto-filled default
+			// ✅ NEW DOCUMENT → Always force company-mapped series, ignore any stale/default value
 			if (is_new_doc) {
 				frm.set_value("naming_series", series[0]);
 				return;

@@ -52,6 +52,63 @@
 # 	return sorted(series_set)
 
 
+# import frappe
+
+# DEFAULT_SERIES = {
+# 	"Sales Invoice": "SINV-",
+# 	"Sales Order": "SO-",
+# 	"Quotation": "QUO-",
+# 	"Purchase Invoice": "PINV-",
+# 	"Purchase Order": "PO-",
+# 	"Payment Entry": "PE-",
+# 	"Journal Entry": "JV-",
+# 	"Credit Note": "CN-",
+# }
+
+
+# @frappe.whitelist()
+# def get_series(company, doctype):
+# 	if not company or not doctype:
+# 		return []
+
+# 	if not frappe.db.exists("Company", company):
+# 		return []
+
+# 	series_set = set()
+
+# 	# ✅ 1. Get from Company Mapping
+# 	company_doc = frappe.get_doc("Company", company)
+# 	if hasattr(company_doc, "custom_naming_series_mapping"):
+# 		for row in company_doc.custom_naming_series_mapping:
+# 			if (row.document_type or "").strip().lower() == doctype.strip().lower():
+# 				if row.naming_series:
+# 					series_set.add(row.naming_series.strip())
+
+# 	# ✅ 2. Get from existing Draft documents (FIXED: f-string)
+# 	draft_series = frappe.db.sql(
+# 		f"""
+#         SELECT DISTINCT naming_series
+#         FROM `tab{doctype}`
+#         WHERE company = %s
+#         AND docstatus = 0
+#         AND naming_series IS NOT NULL
+#         """,
+# 		(company,),
+# 		as_dict=1,
+# 	)
+# 	for d in draft_series:
+# 		if d.naming_series:
+# 			series_set.add(d.naming_series.strip())
+
+# 	# ✅ 3. Fallback default
+# 	if not series_set:
+# 		default = DEFAULT_SERIES.get(doctype)
+# 		if default:
+# 			series_set.add(default)
+
+# 	return sorted(series_set)
+
+
 import frappe
 
 DEFAULT_SERIES = {
@@ -74,18 +131,21 @@ def get_series(company, doctype):
 	if not frappe.db.exists("Company", company):
 		return []
 
-	series_set = set()
+	mapped_series = []
+	draft_series = []
 
-	# ✅ 1. Get from Company Mapping
+	# ✅ 1. Get from Company Mapping — HIGHEST PRIORITY, keeps insertion order
 	company_doc = frappe.get_doc("Company", company)
 	if hasattr(company_doc, "custom_naming_series_mapping"):
 		for row in company_doc.custom_naming_series_mapping:
 			if (row.document_type or "").strip().lower() == doctype.strip().lower():
 				if row.naming_series:
-					series_set.add(row.naming_series.strip())
+					val = row.naming_series.strip()
+					if val not in mapped_series:
+						mapped_series.append(val)
 
-	# ✅ 2. Get from existing Draft documents (FIXED: f-string)
-	draft_series = frappe.db.sql(
+	# ✅ 2. Get from existing Draft documents — LOWER PRIORITY, appended after
+	draft_rows = frappe.db.sql(
 		f"""
         SELECT DISTINCT naming_series
         FROM `tab{doctype}`
@@ -96,14 +156,19 @@ def get_series(company, doctype):
 		(company,),
 		as_dict=1,
 	)
-	for d in draft_series:
+	for d in draft_rows:
 		if d.naming_series:
-			series_set.add(d.naming_series.strip())
+			val = d.naming_series.strip()
+			if val not in mapped_series and val not in draft_series:
+				draft_series.append(val)
 
-	# ✅ 3. Fallback default
-	if not series_set:
+	# ✅ 3. Combine: mapped series ALWAYS first, draft-only series after
+	final_series = mapped_series + draft_series
+
+	# ✅ 4. Fallback default only if nothing found at all
+	if not final_series:
 		default = DEFAULT_SERIES.get(doctype)
 		if default:
-			series_set.add(default)
+			final_series.append(default)
 
-	return sorted(series_set)
+	return final_series
